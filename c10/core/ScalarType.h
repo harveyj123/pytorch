@@ -69,6 +69,7 @@ struct dummy_int1_7_t {};
   _(at::Half, Half) /* 5 */                              \
   _(float, Float) /* 6 */                                \
   _(double, Double) /* 7 */                              \
+  _(__float128, Float128)                                \
   _(c10::complex<c10::Half>, ComplexHalf) /* 8 */        \
   _(c10::complex<float>, ComplexFloat) /* 9 */           \
   _(c10::complex<double>, ComplexDouble) /* 10 */        \
@@ -226,6 +227,7 @@ AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(SPECIALIZE_CppTypeToScalarType)
   _(int64_t, Long)                \
   _(float, Float)                 \
   _(double, Double)
+  // _(__float128, Float128)
 
 // These macros are often controlling how many template instantiations we
 // create for kernels.  It is typically inappropriate to add new dtypes here,
@@ -327,7 +329,10 @@ AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(SPECIALIZE_CppTypeToScalarType)
   _(at::Float8_e4m3fn, Float8_e4m3fn)     \
   _(at::Float8_e5m2fnuz, Float8_e5m2fnuz) \
   _(at::Float8_e4m3fnuz, Float8_e4m3fnuz) \
-  _(at::Float8_e8m0fnu, Float8_e8m0fnu)
+  _(at::Float8_e8m0fnu, Float8_e8m0fnu) 
+
+#define AT_FORALL_FLOAT128_TYPES(_) \
+  _(__float128, Float128)           \
 
 #define AT_FORALL_COMPLEX_TYPES(_)     \
   _(c10::complex<float>, ComplexFloat) \
@@ -395,6 +400,7 @@ inline bool isReducedFloatingType(ScalarType t) {
 
 inline bool isFloatingType(ScalarType t) {
   return t == ScalarType::Double || t == ScalarType::Float ||
+      t == ScalarType::Float128 ||
       isReducedFloatingType(t);
 }
 
@@ -493,6 +499,7 @@ inline bool isSignedType(ScalarType t) {
       CASE_ISSIGNED(Long);
       CASE_ISSIGNED(Half);
       CASE_ISSIGNED(Float);
+      CASE_ISSIGNED(Float128);
       CASE_ISSIGNED(Double);
       CASE_ISSIGNED(ComplexHalf);
       CASE_ISSIGNED(ComplexFloat);

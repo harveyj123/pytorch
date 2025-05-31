@@ -92,6 +92,7 @@
 #define AT_INTEGRAL_TYPES \
   c10::kByte, c10::kChar, c10::kInt, c10::kLong, c10::kShort
 #define AT_FLOATING_TYPES c10::kDouble, c10::kFloat
+#define AT_FLOAT128_TYPES c10::kFloat128 
 #define AT_BAREBONES_UNSIGNED_TYPES c10::kUInt16, c10::kUInt32, c10::kUInt64
 #define AT_INTEGRAL_TYPES_V2 \
   AT_EXPAND(AT_INTEGRAL_TYPES), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES)

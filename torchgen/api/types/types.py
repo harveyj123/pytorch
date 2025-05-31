@@ -52,6 +52,7 @@ float8_e5m2fnuzT = BaseCppType("at", "Float8_e5m2fnuz")
 float8_e4m3fnT = BaseCppType("at", "Float8_e4m3fn")
 float8_e4m3fnuzT = BaseCppType("at", "Float8_e4m3fnuz")
 float8_e8m0fnuT = BaseCppType("at", "Float8_e8m0fnu")
+float128T = BaseCppType("at", "Float128")
 stringT = BaseCppType("c10", "string_view")
 generatorT = BaseCppType("at", "Generator")
 scalarTypeT = BaseCppType("at", "ScalarType")
@@ -95,6 +96,7 @@ ScalarTypeToCppMapping: dict[ScalarType, BaseCppType] = {
     ScalarType.Half: halfT,
     ScalarType.Float: floatT,
     ScalarType.Double: doubleT,
+    ScalarType.Float128: float128T,
     ScalarType.ComplexHalf: complexHalfT,
     ScalarType.ComplexFloat: complexFloatT,
     ScalarType.ComplexDouble: complexDoubleT,

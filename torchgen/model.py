@@ -366,6 +366,7 @@ class ScalarType(Enum):
     Half = auto()
     Float = auto()
     Double = auto()
+    Float128 = auto()
     ComplexHalf = auto()
     ComplexFloat = auto()
     ComplexDouble = auto()
