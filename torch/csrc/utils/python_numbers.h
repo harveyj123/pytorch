@@ -7,7 +7,9 @@
 #include <torch/csrc/utils/object_ptr.h>
 #include <torch/csrc/utils/tensor_numpy.h>
 #include <cstdint>
+#include <quadmath.h>
 #include <limits>
+#include <iostream>
 #include <stdexcept>
 
 // largest integer that can be represented consecutively in a double
@@ -156,7 +158,6 @@ inline double THPUtils_unpackDouble(PyObject* obj) {
   }
   return value;
 }
-
 inline c10::complex<double> THPUtils_unpackComplexDouble(PyObject* obj) {
   Py_complex value = PyComplex_AsCComplex(obj);
   if (value.real == -1.0 && PyErr_Occurred()) {
@@ -202,3 +203,16 @@ inline c10::DeviceIndex THPUtils_unpackDeviceIndex(PyObject* obj) {
   }
   return (c10::DeviceIndex)value;
 }
+
+
+inline __float128 THPUtils_unpackFloat128(PyObject* obj) {
+  if (PyFloat_Check(obj)) {
+    return (__float128)PyFloat_AS_DOUBLE(obj);
+  }
+  double d = PyFloat_AsDouble(obj);  
+  if (d == -1.0 && PyErr_Occurred()) {
+    throw python_error();           
+  }
+  return (__float128)d;
+}
+

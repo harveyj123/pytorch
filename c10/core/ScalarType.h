@@ -143,6 +143,7 @@ struct dummy_int1_7_t {};
   _(at::Half, Half)                            \
   _(float, Float)                              \
   _(double, Double)                            \
+  _(__float128, Float128)                      \
   _(c10::complex<c10::Half>, ComplexHalf)      \
   _(c10::complex<float>, ComplexFloat)         \
   _(c10::complex<double>, ComplexDouble)       \
@@ -227,7 +228,6 @@ AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(SPECIALIZE_CppTypeToScalarType)
   _(int64_t, Long)                \
   _(float, Float)                 \
   _(double, Double)
-  // _(__float128, Float128)
 
 // These macros are often controlling how many template instantiations we
 // create for kernels.  It is typically inappropriate to add new dtypes here,

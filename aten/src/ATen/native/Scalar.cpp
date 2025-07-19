@@ -35,7 +35,7 @@ Scalar item(const Tensor& self) {
 
 #define AT_SD_BASE_TYPES AT_EXPAND(AT_ALL_TYPES), AT_EXPAND(AT_COMPLEX_TYPES), kComplexHalf, kHalf, kBool, kBFloat16, AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES)
 #if !defined(C10_MOBILE)
-#define AT_SD_TYPES AT_EXPAND(AT_SD_BASE_TYPES), AT_EXPAND(AT_FLOAT8_TYPES)
+#define AT_SD_TYPES AT_EXPAND(AT_SD_BASE_TYPES), AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_FLOAT128_TYPES)
 #else
 #define AT_SD_TYPES AT_EXPAND(AT_SD_BASE_TYPES)
 #endif
@@ -47,6 +47,8 @@ Scalar _local_scalar_dense_cpu(const Tensor& self) {
   if (self.scalar_type() == kBool) {
     return Scalar(static_cast<bool>(*reinterpret_cast<const uint8_t*>(self.const_data_ptr<bool>())));
   }
+
+
   Scalar r;
   AT_DISPATCH_V2(
     self.scalar_type(),

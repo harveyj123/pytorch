@@ -101,6 +101,9 @@ struct static_cast_with_inter_type<uint8_t, src_t> {
   }
 };
 
+
+
+
 template <>
 struct static_cast_with_inter_type<c10::complex<c10::Half>, c10::BFloat16> {
   C10_HOST_DEVICE __ubsan_ignore_undefined__ static inline c10::complex<
