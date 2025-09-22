@@ -134,8 +134,7 @@ inline PyObject* load_scalar(const void* data, at::ScalarType scalarType) {
     case at::kDouble:
       return PyFloat_FromDouble(*(double*)data);
     case at::kFloat128:
-      return PyFloat_FromDouble(*(double*)data);
-          
+      return THPUtils_packFloat128(*(__float128*)data);
     case at::kComplexHalf: {
       auto data_ = reinterpret_cast<const c10::complex<at::Half>*>(data);
       return PyComplex_FromDoubles(data_->real(), data_->imag());

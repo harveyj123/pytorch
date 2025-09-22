@@ -205,7 +205,32 @@ inline c10::DeviceIndex THPUtils_unpackDeviceIndex(PyObject* obj) {
 }
 
 
+
+inline PyObject* THPUtils_packFloat128(__float128 value) {
+  char buffer[128];
+  int len = quadmath_snprintf(buffer, sizeof(buffer), "%.36Qg", value);
+  if (len < 0) {
+    throw std::runtime_error("Failed to convert float128 to string");
+  }
+  return PyUnicode_FromString(buffer);
+}
+
+
 inline __float128 THPUtils_unpackFloat128(PyObject* obj) {
+  // Handle string input for high precision
+  if (PyUnicode_Check(obj)) {
+    const char* str_value = PyUnicode_AsUTF8(obj);
+    if (str_value) {
+      char* endptr;
+      __float128 result = strtoflt128(str_value, &endptr);
+      if (endptr != str_value && *endptr == '\0') {  // Successful conversion
+        return result;
+      }
+    }
+    throw std::runtime_error("Failed to convert string to float128");
+  }
+  
+  // Fallback to existing double conversion (precision loss)
   if (PyFloat_Check(obj)) {
     return (__float128)PyFloat_AS_DOUBLE(obj);
   }
@@ -215,4 +240,3 @@ inline __float128 THPUtils_unpackFloat128(PyObject* obj) {
   }
   return (__float128)d;
 }
-

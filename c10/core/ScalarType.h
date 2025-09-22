@@ -398,11 +398,17 @@ inline bool isReducedFloatingType(ScalarType t) {
       isFloat8Type(t) || t == ScalarType::Float4_e2m1fn_x2;
 }
 
+inline bool isFloat128Type(ScalarType t) {
+  return t == ScalarType::Float128;
+}
+
 inline bool isFloatingType(ScalarType t) {
   return t == ScalarType::Double || t == ScalarType::Float ||
-      t == ScalarType::Float128 ||
+      t == ScalarType::Float128 || isFloat128Type(t) ||
       isReducedFloatingType(t);
 }
+
+
 
 inline bool isComplexType(ScalarType t) {
   return (

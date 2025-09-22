@@ -120,7 +120,7 @@ class C10_API Scalar {
     } else if (Tag::HAS_sd == tag) {                                  \
       return checked_convert<type, double>(                           \
           toSymFloat().guard_float(__FILE__, __LINE__), #type);       \
-    } else if (tag == Tag::HAS_f128) {                                \
+    } else if (Tag::HAS_f128 == tag ) {                                \
       return checked_convert<type, __float128>(v.f128, #type);        \
     }                                                                 \
     if (Tag::HAS_b == tag) {                                          \

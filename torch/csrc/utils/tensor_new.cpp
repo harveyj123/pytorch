@@ -121,6 +121,10 @@ std::vector<int64_t> compute_sizes(PyObject* seq, ScalarType scalar_type) {
 }
 
 ScalarType infer_scalar_type(PyObject* obj) {
+  if (PyUnicode_Check(obj)) {
+    // For string input, assume high precision is wanted
+    return at::kFloat128;
+  }
   if (torch::is_symint(obj)) {
     return ScalarType::Long;
   }
@@ -272,6 +276,13 @@ Tensor internal_new_from_data(
     bool copy_numpy,
     bool type_inference,
     bool pin_memory = false) {
+    if (PyUnicode_Check(data) && scalar_type == at::kFloat128) {
+    // Handle string input for float128
+    __float128 value = THPUtils_unpackFloat128(data);
+    auto tensor = at::empty({}, options.dtype(at::kFloat128));
+    *(__float128*)tensor.data_ptr() = value;
+    return tensor;
+  }
   TORCH_CHECK_TYPE(
       !THPUtils_checkString(data),
       "new(): invalid data type '",
