@@ -63,6 +63,9 @@ DLDataType getDLDataType(const Tensor& t) {
     case ScalarType::BFloat16:
       dtype.code = DLDataTypeCode::kDLBfloat;
       break;
+    case ScalarType::Float128:
+      TORCH_CHECK(false, "float128 types are not supported by dlpack");
+      break;
     // TODO(#146647): use macro here instead of spelling out each shell dtype
     case ScalarType::Float8_e5m2:
     case ScalarType::Float8_e5m2fnuz:

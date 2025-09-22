@@ -1670,6 +1670,7 @@ def gen_pyi(
             "float32",
             "float",
             "float64",
+            "float128",
             "double",
             "float16",
             "bfloat16",
