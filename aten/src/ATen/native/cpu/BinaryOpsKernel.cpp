@@ -96,7 +96,7 @@ void atan2_kernel(TensorIteratorBase& iter) {
       kHalf,                                             \
       kBool,                                             \
       kBFloat16,                                         \
-      AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES))
+      AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_FLOAT128_TYPES), AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES))
 #define _AT_DISPATCH_ALL_TYPES_NO_BOOL(TYPE, NAME, ...) \
   AT_DISPATCH_V2(               \
       TYPE,                                             \
@@ -105,10 +105,10 @@ void atan2_kernel(TensorIteratorBase& iter) {
       kComplexHalf,                                     \
       kHalf,                                            \
       kBFloat16,                                        \
-      AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES))
+      AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_FLOAT128_TYPES), AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES))
 #define _AT_DISPATCH_MUL_TYPES(TYPE, NAME, ...) \
   AT_DISPATCH_V2(TYPE, NAME, AT_WRAP(__VA_ARGS__),       \
-      kHalf, kBFloat16, AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES))
+      kHalf, kBFloat16, AT_EXPAND(AT_FLOAT8_TYPES), AT_EXPAND(AT_FLOAT128_TYPES), AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES))
 #else
 #define _AT_DISPATCH_INTEGRAL_TYPES_V2(TYPE, NAME, ...)  \
   AT_DISPATCH_INTEGRAL_TYPES(TYPE, NAME, __VA_ARGS__)
@@ -123,6 +123,8 @@ void atan2_kernel(TensorIteratorBase& iter) {
       kHalf, kBFloat16, TYPE, NAME, __VA_ARGS__)
 #endif
 
+
+
 void mul_kernel(TensorIteratorBase& iter) {
   auto dtype = iter.common_dtype();
   if (dtype == ScalarType::Bool) {
@@ -134,6 +136,12 @@ void mul_kernel(TensorIteratorBase& iter) {
             c10::complex<at::Half> b) -> c10::complex<at::Half> {
           using comp_t = c10::complex<float>;
           return comp_t{a} * comp_t{b};
+        });
+  } else if (dtype == ScalarType::Float128) {
+    cpu_kernel(
+        iter,
+        [=](__float128 a, __float128 b) -> __float128 {
+          return a * b;
         });
   } else if (iter.is_scalar(2) && iter.data_ptr(2) != nullptr && at::isReducedFloatingType(dtype)) {
     AT_DISPATCH_REDUCED_FLOATING_TYPES(dtype, "mul_cpu_reduced_float", [&]() {

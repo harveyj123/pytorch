@@ -47,10 +47,10 @@ class C10_API Scalar {
 
 #define DEFINE_IMPLICIT_CTOR(type, name) \
   Scalar(type vv) : Scalar(vv, true) {}
-
   AT_FORALL_SCALAR_TYPES_AND3(Half, BFloat16, ComplexHalf, DEFINE_IMPLICIT_CTOR)
   AT_FORALL_COMPLEX_TYPES(DEFINE_IMPLICIT_CTOR)
   AT_FORALL_FLOAT8_TYPES(DEFINE_IMPLICIT_CTOR)
+  AT_FORALL_FLOAT128_TYPES(DEFINE_IMPLICIT_CTOR)
 
   // Helper constructors to allow Scalar creation from long and long long types
   // As std::is_same_v<long, long long> is false(except Android), one needs to
@@ -119,6 +119,8 @@ class C10_API Scalar {
     } else if (Tag::HAS_sd == tag) {                                  \
       return checked_convert<type, double>(                           \
           toSymFloat().guard_float(__FILE__, __LINE__), #type);       \
+    } else if (Tag::HAS_f128 == tag ) {                                \
+      return checked_convert<type, __float128>(v.f128, #type);        \
     }                                                                 \
     if (Tag::HAS_b == tag) {                                          \
       return checked_convert<type, bool>(v.i, #type);                 \
@@ -183,7 +185,7 @@ class C10_API Scalar {
   }
 
   bool isFloatingPoint() const {
-    return Tag::HAS_d == tag || Tag::HAS_sd == tag;
+    return Tag::HAS_d == tag || Tag::HAS_sd == tag || tag == Tag::HAS_f128;
   }
 
   [[deprecated(
@@ -316,7 +318,9 @@ class C10_API Scalar {
   }
 
   ScalarType type() const {
-    if (isComplex()) {
+    if (tag == Tag::HAS_f128) {
+    return ScalarType::Float128;
+      }if (isComplex()) {
       return ScalarType::ComplexDouble;
     } else if (isFloatingPoint()) {
       return ScalarType::Double;
@@ -377,7 +381,7 @@ class C10_API Scalar {
   // We can't set v in the initializer list using the
   // syntax v{ .member = ... } because it doesn't work on MSVC
  private:
-  enum class Tag { HAS_d, HAS_i, HAS_u, HAS_z, HAS_b, HAS_sd, HAS_si, HAS_sb };
+  enum class Tag { HAS_d, HAS_i, HAS_u, HAS_z, HAS_b, HAS_sd, HAS_si, HAS_sb, HAS_f128 };
 
   // Note [Meaning of HAS_u]
   // ~~~~~~~~~~~~~~~~~~~~~~~
@@ -409,6 +413,7 @@ class C10_API Scalar {
   union v_t {
     double d{};
     int64_t i;
+    __float128 f128;
     // See Note [Meaning of HAS_u]
     uint64_t u;
     c10::complex<double> z;
@@ -417,10 +422,15 @@ class C10_API Scalar {
     v_t() {} // default constructor
   } v;
 
+
+  Scalar(__float128 vv, bool) noexcept : tag(Tag::HAS_f128) {
+    v.f128 = convert<__float128, __float128>(vv);
+  }
+
   template <
       typename T,
       typename std::enable_if_t<
-          std::is_integral_v<T> && !std::is_same_v<T, bool>,
+          std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T,__float128>,
           bool>* = nullptr>
   Scalar(T vv, bool) : tag(Tag::HAS_i) {
     v.i = convert<decltype(v.i), T>(vv);
@@ -429,7 +439,7 @@ class C10_API Scalar {
   template <
       typename T,
       typename std::enable_if_t<
-          !std::is_integral_v<T> && !c10::is_complex<T>::value,
+          !std::is_integral_v<T> && !c10::is_complex<T>::value && !std::is_same_v<T, __float128>,
           bool>* = nullptr>
   Scalar(T vv, bool) : tag(Tag::HAS_d) {
     v.d = convert<decltype(v.d), T>(vv);
@@ -455,6 +465,7 @@ AT_FORALL_SCALAR_TYPES_WITH_COMPLEX(DEFINE_TO)
 DEFINE_TO(uint16_t, UInt16)
 DEFINE_TO(uint32_t, UInt32)
 DEFINE_TO(uint64_t, UInt64)
+
 #undef DEFINE_TO
 
 } // namespace c10
