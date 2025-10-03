@@ -1,6 +1,7 @@
 #pragma once
 
 #include <c10/util/BFloat16.h>
+#include <c10/util/Float128.h>
 #include <c10/util/Exception.h>
 #include <c10/util/Float4_e2m1fn_x2.h>
 #include <c10/util/Float8_e4m3fn.h>

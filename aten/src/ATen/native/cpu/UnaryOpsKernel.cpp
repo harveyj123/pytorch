@@ -27,6 +27,10 @@
 #include <mkl.h>
 #endif
 
+#ifdef __SIZEOF_FLOAT128__
+#include <quadmath.h>
+#endif
+
 namespace at::native {
 
 inline namespace CPU_CAPABILITY {
@@ -189,6 +193,14 @@ static void logit_kernel(TensorIteratorBase& iter, const Scalar& eps_scalar) {
 
 static void abs_kernel(TensorIteratorBase& iter) {
   auto dtype = iter.dtype();
+#ifdef __SIZEOF_FLOAT128__
+  if (dtype == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return fabsq(a);
+    });
+    return;
+  }
+#endif
   if (dtype == kComplexHalf) {
     using scalar_t = c10::complex<Half>;
     using opmath_t = at::opmath_type<scalar_t>;
@@ -395,11 +407,36 @@ static void asinh_kernel(TensorIteratorBase& iter) {
 }
 
 static void atanh_kernel(TensorIteratorBase& iter) {
+#ifdef __SIZEOF_FLOAT128__
+  if (iter.dtype() == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return atanhq(a);
+    });
+    return;
+  }
+#endif
     AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.dtype(), "atanh_cpu", [&]() {
       cpu_kernel_vec(
         iter,
         [=](scalar_t a) -> scalar_t { return std::atanh(a); },
         [=](Vectorized<scalar_t> self_vec){return self_vec.atanh();});
+    });
+}
+
+static void tanh_kernel(TensorIteratorBase& iter) {
+#ifdef __SIZEOF_FLOAT128__
+  if (iter.dtype() == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return tanhq(a);
+    });
+    return;
+  }
+#endif
+    AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.dtype(), "tanh_cpu", [&]() {
+      cpu_kernel_vec(
+        iter,
+        [=](scalar_t a) -> scalar_t { return std::tanh(a); },
+        [=](Vectorized<scalar_t> self_vec){return self_vec.tanh();});
     });
 }
 
@@ -848,6 +885,7 @@ ALSO_REGISTER_AVX512_DISPATCH(logit_stub, &CPU_CAPABILITY::logit_kernel)
 ALSO_REGISTER_AVX512_DISPATCH(sinh_stub, &CPU_CAPABILITY::sinh_kernel)
 ALSO_REGISTER_AVX512_DISPATCH(cosh_stub, &CPU_CAPABILITY::cosh_kernel)
 ALSO_REGISTER_AVX512_DISPATCH(atanh_stub, &CPU_CAPABILITY::atanh_kernel)
+ALSO_REGISTER_AVX512_DISPATCH(tanh_stub, &CPU_CAPABILITY::tanh_kernel)
 
 // Might enable AVX512 dispatch after enabling explicit vectorization for them
 REGISTER_DISPATCH(acosh_stub, &CPU_CAPABILITY::acosh_kernel)
@@ -880,7 +918,6 @@ STATIC_IMPLEMENT_COMPLEX_KERNEL_WITH_AVX512(log)
 STATIC_IMPLEMENT_COMPLEX_KERNEL_WITH_AVX512(log10)
 STATIC_IMPLEMENT_COMPLEX_KERNEL_WITH_AVX512(log1p)
 STATIC_IMPLEMENT_COMPLEX_KERNEL_WITH_AVX512(log2)
-STATIC_IMPLEMENT_COMPLEX_KERNEL_WITH_AVX512(tanh)
 IMPLEMENT_FLOAT_KERNEL_WITH_AVX512(lgamma)
 
 } // namespace at::native

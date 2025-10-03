@@ -952,6 +952,16 @@ void tanh_backward_kernel(TensorIteratorBase& iter) {
             return a * (one_vec - b * b).conj();
           });
     });
+  } else if (iter.dtype() == ScalarType::Float128) {
+    auto one_vec = Vectorized<__float128>(__float128{1});
+    cpu_kernel_vec(
+        iter,
+        [=](__float128 a, __float128 b) -> __float128 {
+          return a * (__float128{1} - b * b);
+        },
+        [=](Vectorized<__float128> a, Vectorized<__float128> b) {
+          return a * (one_vec - b * b);
+        });
   } else if (at::isReducedFloatingType(iter.dtype())) {
     AT_DISPATCH_REDUCED_FLOATING_TYPES(
         iter.dtype(), "tanh_backward_cpu", [&]() {
