@@ -1,3 +1,5 @@
+#pragma once
+
 #include <quadmath.h>
 #include <limits>
 

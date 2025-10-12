@@ -285,7 +285,7 @@ static void logical_not_kernel(TensorIteratorBase& iter) {
 }
 
 void reciprocal_kernel(TensorIteratorBase& iter) {
-  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.common_dtype(), "reciprocal_cpu", [&]() {
+  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND3(kBFloat16, kHalf, kFloat128, iter.common_dtype(), "reciprocal_cpu", [&]() {
     cpu_kernel_vec(
         iter,
         [=](scalar_t a) __ubsan_ignore_float_divide_by_zero__ -> scalar_t { return static_cast<scalar_t>(1.0) / a; },
@@ -295,7 +295,7 @@ void reciprocal_kernel(TensorIteratorBase& iter) {
 
 // NB: Ignores the negative bit on tensors
 void neg_kernel(TensorIteratorBase& iter) {
-  AT_DISPATCH_ALL_TYPES_AND_COMPLEX_AND3(kComplexHalf, kBFloat16, kHalf, iter.dtype(), "neg_cpu", [&]() {
+  AT_DISPATCH_ALL_TYPES_AND_COMPLEX_AND4(kComplexHalf, kBFloat16, kHalf, kFloat128, iter.dtype(), "neg_cpu", [&]() {
     cpu_kernel_vec(
         iter,
         [=](scalar_t a) -> scalar_t { return -a; },
@@ -867,12 +867,92 @@ REGISTER_DISPATCH(special_modified_bessel_k1_stub, &CPU_CAPABILITY::modified_bes
 IMPLEMENT_FLOAT_KERNEL_WITHOUT_AVX512(ceil)
 IMPLEMENT_FLOAT_KERNEL_WITHOUT_AVX512(floor)
 IMPLEMENT_FLOAT_KERNEL_WITHOUT_AVX512(round)
-IMPLEMENT_COMPLEX_KERNEL_WITHOUT_AVX512(sqrt)
 IMPLEMENT_FLOAT_KERNEL_WITHOUT_AVX512(trunc)
 IMPLEMENT_FLOAT_KERNEL_WITHOUT_AVX512(i0)
-STATIC_IMPLEMENT_COMPLEX_KERNEL_WITHOUT_AVX512(sin)
-STATIC_IMPLEMENT_COMPLEX_KERNEL_WITHOUT_AVX512(cos)
-STATIC_IMPLEMENT_COMPLEX_KERNEL_WITHOUT_AVX512(tan)
+
+// Custom implementation for sqrt with Float128 support
+inline namespace CPU_CAPABILITY {
+void sqrt_kernel(TensorIteratorBase& iter) {
+#ifdef __SIZEOF_FLOAT128__
+  if (iter.dtype() == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return sqrtq(a);
+    });
+    return;
+  }
+#endif
+  TORCH_INTERNAL_ASSERT(iter.ntensors() == 2);
+  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.dtype(), "sqrt_vml_cpu", [&]() {
+    constexpr int64_t grain_size = 2048;
+    iter.for_each(IMPLEMENT_ITERATOR_LAMBDA(sqrt), grain_size);
+  });
+  iter.cast_outputs();
+}
+}
+REGISTER_DISPATCH(sqrt_stub, &CPU_CAPABILITY::sqrt_kernel)
+
+// Custom implementation for sin with Float128 support
+inline namespace CPU_CAPABILITY {
+static void sin_kernel(TensorIteratorBase& iter) {
+#ifdef __SIZEOF_FLOAT128__
+  if (iter.dtype() == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return sinq(a);
+    });
+    return;
+  }
+#endif
+  TORCH_INTERNAL_ASSERT(iter.ntensors() == 2);
+  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.dtype(), "sin_vml_cpu", [&]() {
+    constexpr int64_t grain_size = 2048;
+    iter.for_each(IMPLEMENT_ITERATOR_LAMBDA(sin), grain_size);
+  });
+  iter.cast_outputs();
+}
+}
+REGISTER_DISPATCH(sin_stub, &CPU_CAPABILITY::sin_kernel)
+
+// Custom implementation for cos with Float128 support
+inline namespace CPU_CAPABILITY {
+static void cos_kernel(TensorIteratorBase& iter) {
+#ifdef __SIZEOF_FLOAT128__
+  if (iter.dtype() == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return cosq(a);
+    });
+    return;
+  }
+#endif
+  TORCH_INTERNAL_ASSERT(iter.ntensors() == 2);
+  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.dtype(), "cos_vml_cpu", [&]() {
+    constexpr int64_t grain_size = 2048;
+    iter.for_each(IMPLEMENT_ITERATOR_LAMBDA(cos), grain_size);
+  });
+  iter.cast_outputs();
+}
+}
+REGISTER_DISPATCH(cos_stub, &CPU_CAPABILITY::cos_kernel)
+
+// Custom implementation for tan with Float128 support
+inline namespace CPU_CAPABILITY {
+static void tan_kernel(TensorIteratorBase& iter) {
+#ifdef __SIZEOF_FLOAT128__
+  if (iter.dtype() == ScalarType::Float128) {
+    cpu_kernel(iter, [](__float128 a) -> __float128 {
+      return tanq(a);
+    });
+    return;
+  }
+#endif
+  TORCH_INTERNAL_ASSERT(iter.ntensors() == 2);
+  AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kBFloat16, kHalf, iter.dtype(), "tan_vml_cpu", [&]() {
+    constexpr int64_t grain_size = 2048;
+    iter.for_each(IMPLEMENT_ITERATOR_LAMBDA(tan), grain_size);
+  });
+  iter.cast_outputs();
+}
+}
+REGISTER_DISPATCH(tan_stub, &CPU_CAPABILITY::tan_kernel)
 
 // The following kernels are compute-intensive & are compiled with both AVX512
 // & AVX2

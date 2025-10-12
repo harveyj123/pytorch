@@ -13,6 +13,10 @@
 #include <c10/util/Half.h>
 #include <c10/util/complex.h>
 
+#ifdef __SIZEOF_FLOAT128__
+#include <quadmath.h>
+#endif
+
 #include <cmath>
 #include <type_traits>
 
@@ -29,6 +33,11 @@ inline C10_HOST_DEVICE bool _isnan(T /*val*/) {
 
 template <typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 inline C10_HOST_DEVICE bool _isnan(T val) {
+#if defined(__SIZEOF_FLOAT128__) && !defined(__CUDACC__) && !defined(__HIPCC__)
+  if constexpr (sizeof(T) == sizeof(__float128)) {
+    return ::isnanq(val);
+  } else
+#endif
 #if defined(__CUDACC__) || defined(__HIPCC__)
   return ::isnan(val);
 #else
@@ -96,6 +105,11 @@ inline C10_HOST_DEVICE bool _isinf(T /*val*/) {
 
 template <typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
 inline C10_HOST_DEVICE bool _isinf(T val) {
+#if defined(__SIZEOF_FLOAT128__) && !defined(__CUDACC__) && !defined(__HIPCC__)
+  if constexpr (sizeof(T) == sizeof(__float128)) {
+    return ::isinfq(val);
+  } else
+#endif
 #if defined(__CUDACC__) || defined(__HIPCC__)
   return ::isinf(val);
 #else
@@ -132,6 +146,11 @@ C10_HOST_DEVICE inline T exp(T x) {
   static_assert(
       !std::is_same_v<T, double>,
       "this template must be used with float or less precise type");
+#if defined(__SIZEOF_FLOAT128__) && !defined(__CUDA_ARCH__) && !defined(__HIP_ARCH__)
+  if constexpr (sizeof(T) == sizeof(__float128)) {
+    return ::expq(x);
+  } else
+#endif
 #if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
   // use __expf fast approximation for peak bandwidth
   return __expf(x);
@@ -150,6 +169,11 @@ C10_HOST_DEVICE inline T log(T x) {
   static_assert(
       !std::is_same_v<T, double>,
       "this template must be used with float or less precise type");
+#if defined(__SIZEOF_FLOAT128__) && !defined(__CUDA_ARCH__) && !defined(__HIP_ARCH__)
+  if constexpr (sizeof(T) == sizeof(__float128)) {
+    return ::logq(x);
+  } else
+#endif
 #if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
   // use __logf fast approximation for peak bandwidth
   return __logf(x);
@@ -168,6 +192,11 @@ C10_HOST_DEVICE inline T log1p(T x) {
   static_assert(
       !std::is_same_v<T, double>,
       "this template must be used with float or less precise type");
+#if defined(__SIZEOF_FLOAT128__) && !defined(__CUDA_ARCH__) && !defined(__HIP_ARCH__)
+  if constexpr (sizeof(T) == sizeof(__float128)) {
+    return ::log1pq(x);
+  } else
+#endif
 #if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
   // use __logf fast approximation for peak bandwidth
   // NOTE: There is no __log1pf so unfortunately we lose precision.
@@ -187,6 +216,11 @@ C10_HOST_DEVICE inline T tan(T x) {
   static_assert(
       !std::is_same_v<T, double>,
       "this template must be used with float or less precise type");
+#if defined(__SIZEOF_FLOAT128__) && !defined(__CUDA_ARCH__) && !defined(__HIP_ARCH__)
+  if constexpr (sizeof(T) == sizeof(__float128)) {
+    return ::tanq(x);
+  } else
+#endif
 #if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
   // use __tanf fast approximation for peak bandwidth
   return __tanf(x);
