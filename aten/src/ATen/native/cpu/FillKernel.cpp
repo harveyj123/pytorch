@@ -8,6 +8,7 @@
 
 #include <ATen/native/Fill.h>
 #include <c10/core/Scalar.h>
+#include <c10/util/Float128.h>
 
 namespace at::native {
 namespace {
@@ -54,6 +55,13 @@ void fill_kernel(TensorIterator& iter, const Scalar& value_scalar) {
   } else if (iter.dtype() == ScalarType::Float8_e8m0fnu) {
     // TODO(#146647): use macro here instead of spelling out each float8 dtype
     fill_non_native_type<at::Float8_e8m0fnu>(iter, value_scalar);
+  } else if (iter.dtype() == ScalarType::Float128) {
+    // Handle Float128 - convert scalar to double, then to Float128
+    c10::Float128 value = c10::Float128(value_scalar.to<double>());
+    cpu_kernel_vec(
+        iter,
+        [=]() -> c10::Float128 { return value; },
+        [=]() { return Vectorized<c10::Float128>(value); });
   } else {
     AT_DISPATCH_V2(
       iter.dtype(), "fill_cpu", AT_WRAP([&]() {

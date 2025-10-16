@@ -52,6 +52,11 @@ class C10_API Scalar {
   AT_FORALL_COMPLEX_TYPES(DEFINE_IMPLICIT_CTOR)
   AT_FORALL_FLOAT8_TYPES(DEFINE_IMPLICIT_CTOR)
 
+  // Constructor for Float128
+  Scalar(c10::Float128 vv) : tag(Tag::HAS_f128) {
+    v.f128 = vv;
+  }
+
   // Helper constructors to allow Scalar creation from long and long long types
   // As std::is_same_v<long, long long> is false(except Android), one needs to
   // provide a constructor from either long or long long in addition to one from
@@ -116,6 +121,8 @@ class C10_API Scalar {
       return checked_convert<type, double>(v.d, #type);               \
     } else if (Tag::HAS_z == tag) {                                   \
       return checked_convert<type, c10::complex<double>>(v.z, #type); \
+    } else if (Tag::HAS_f128 == tag) {                                \
+      return checked_convert<type, double>(static_cast<double>(v.f128), #type); \
     } else if (Tag::HAS_sd == tag) {                                  \
       return checked_convert<type, double>(                           \
           toSymFloat().guard_float(__FILE__, __LINE__), #type);       \
@@ -143,6 +150,15 @@ class C10_API Scalar {
   DEFINE_ACCESSOR(uint64_t, UInt64)
 
 #undef DEFINE_ACCESSOR
+
+  c10::Float128 toFloat128() const {
+    if (Tag::HAS_f128 == tag) {
+      return v.f128;
+    } else if (Tag::HAS_d == tag) {
+      return c10::Float128(v.d);
+    }
+    TORCH_CHECK(false, "Scalar must be Float128 or Double to convert to Float128");
+  }
 
   SymInt toSymInt() const {
     if (Tag::HAS_si == tag) {
@@ -183,7 +199,7 @@ class C10_API Scalar {
   }
 
   bool isFloatingPoint() const {
-    return Tag::HAS_d == tag || Tag::HAS_sd == tag;
+    return Tag::HAS_d == tag || Tag::HAS_sd == tag || Tag::HAS_f128 == tag;
   }
 
   [[deprecated(
@@ -318,6 +334,8 @@ class C10_API Scalar {
   ScalarType type() const {
     if (isComplex()) {
       return ScalarType::ComplexDouble;
+    } else if (tag == Tag::HAS_f128) {
+      return ScalarType::Float128;
     } else if (isFloatingPoint()) {
       return ScalarType::Double;
     } else if (isIntegral(/*includeBool=*/false)) {
@@ -377,7 +395,7 @@ class C10_API Scalar {
   // We can't set v in the initializer list using the
   // syntax v{ .member = ... } because it doesn't work on MSVC
  private:
-  enum class Tag { HAS_d, HAS_i, HAS_u, HAS_z, HAS_b, HAS_sd, HAS_si, HAS_sb };
+  enum class Tag { HAS_d, HAS_i, HAS_u, HAS_z, HAS_b, HAS_sd, HAS_si, HAS_sb, HAS_f128 };
 
   // Note [Meaning of HAS_u]
   // ~~~~~~~~~~~~~~~~~~~~~~~
@@ -412,6 +430,7 @@ class C10_API Scalar {
     // See Note [Meaning of HAS_u]
     uint64_t u;
     c10::complex<double> z;
+    c10::Float128 f128;
     c10::intrusive_ptr_target* p;
     // NOLINTNEXTLINE(modernize-use-equals-default)
     v_t() {} // default constructor

@@ -151,6 +151,10 @@ class _Formatter:
                 # as the bits, uint1..7 and int1..7 dtypes.
                 tensor_view = tensor_view.view(torch.uint8)
 
+            if tensor.dtype == torch.float128:  # type: ignore[attr-defined]
+                # Float128 is backed by double, so convert to double for printing
+                tensor_view = tensor_view.double()
+
             nonzero_finite_vals = torch.masked_select(
                 tensor_view, torch.isfinite(tensor_view) & tensor_view.ne(0)
             )
@@ -273,6 +277,10 @@ def _vector_str(self, indent, summarize, formatter1, formatter2=None):
         # TODO(#146647): extend this to other dtypes without casts defined, such
         # as the bits, uint1..7 and int1..7 dtypes.
         self = self.view(torch.uint8)
+
+    if self.dtype == torch.float128:  # type: ignore[attr-defined]
+        # Float128 is backed by double, so convert to double for printing
+        self = self.double()
 
     if summarize and not PRINT_OPTS.edgeitems:
         # Deal with edge case that negative zero is zero

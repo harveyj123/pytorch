@@ -7,6 +7,7 @@
 #include <ATen/native/cpu/CopyKernel.h>
 #include <ATen/native/cpu/Loops.h>
 #include <c10/util/TypeCast.h>
+#include <c10/util/Float128.h>
 #include <ATen/native/cpu/zmath.h>
 #include <ATen/TensorIteratorInternal.h>
 #include <ATen/Parallel.h>
@@ -239,6 +240,12 @@ void direct_copy_kernel(TensorIteratorBase &iter) {
     });
   } else if (dtype == ScalarType::ComplexHalf) {
     cpu_kernel(iter, [=](c10::complex<at::Half> a) -> c10::complex<at::Half> { return a; });
+  } else if (dtype == ScalarType::Float128) {
+    // Handle Float128 separately to avoid casting issues with complex/integer types
+    cpu_kernel_vec(
+        iter,
+        [=](c10::Float128 a) -> c10::Float128 { return a; },
+        [=](Vectorized<c10::Float128> a) -> Vectorized<c10::Float128> { return a; });
   } else if (isBitsType(dtype)) {
     AT_DISPATCH_BIT_TYPES(dtype, "copy_kernel", [&] {
       cpu_kernel(
@@ -293,6 +300,26 @@ void copy_kernel(TensorIterator& iter, bool /*non_blocking*/) {
     copy_same_dtype(iter, requires_conj, requires_neg);
   } else if (reduced_float_type_copy(requires_conj, iter)) {
     reduced_float_copy_kernel(iter, requires_neg);
+  } else if (dtype == ScalarType::Float128 || iter.dtype(1) == ScalarType::Float128) {
+    // Handle Float128 specially - convert through double
+    if (dtype == ScalarType::Float128) {
+      AT_DISPATCH_FLOATING_TYPES_AND2(kBFloat16, kHalf, iter.dtype(1), "copy_float128_out", [&] {
+        cpu_kernel(iter, [](scalar_t x) -> c10::Float128 {
+          return c10::Float128(static_cast<double>(x));
+        });
+      });
+    } else {
+      AT_DISPATCH_FLOATING_TYPES_AND2(kBFloat16, kHalf, dtype, "copy_to_float128", [&] {
+        cpu_kernel(iter, [](c10::Float128 x) -> scalar_t {
+          return static_cast<scalar_t>(static_cast<double>(x));
+        });
+      });
+    }
+    if (requires_conj || requires_neg) {
+      auto self = iter.tensor_base(0);
+      auto iter_conj_neg = TensorIterator::unary_op(self, self);
+      copy_same_dtype(iter_conj_neg, requires_conj, requires_neg);
+    }
   } else {
     _AT_DISPATCH_ALL_TYPES(dtype, "copy_", [&] {
       using dest_t = scalar_t;

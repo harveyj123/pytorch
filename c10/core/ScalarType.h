@@ -8,6 +8,7 @@
 #include <c10/util/Float8_e5m2.h>
 #include <c10/util/Float8_e5m2fnuz.h>
 #include <c10/util/Float8_e8m0fnu.h>
+#include <c10/util/Float128.h>
 #include <c10/util/Half.h>
 #include <c10/util/bits.h>
 #include <c10/util/complex.h>
@@ -105,7 +106,8 @@ struct dummy_int1_7_t {};
   _(c10::dummy_int1_7_t<6>, Int6) /* 42 */               \
   _(c10::dummy_int1_7_t<7>, Int7) /* 43 */               \
   _(c10::Float8_e8m0fnu, Float8_e8m0fnu) /* 44 */        \
-  _(c10::Float4_e2m1fn_x2, Float4_e2m1fn_x2) /* 45 */
+  _(c10::Float4_e2m1fn_x2, Float4_e2m1fn_x2) /* 45 */    \
+  _(c10::Float128, Float128) /* 46 */
 
 // If you want to support ComplexHalf for real, add ComplexHalf
 // into this macro (and change the name).  But beware: convert()
@@ -150,7 +152,8 @@ struct dummy_int1_7_t {};
   _(at::Float8_e4m3fn, Float8_e4m3fn)          \
   _(at::Float8_e5m2fnuz, Float8_e5m2fnuz)      \
   _(at::Float8_e4m3fnuz, Float8_e4m3fnuz)      \
-  _(at::Float8_e8m0fnu, Float8_e8m0fnu)
+  _(at::Float8_e8m0fnu, Float8_e8m0fnu)        \
+  _(c10::Float128, Float128)
 
 enum class ScalarType : int8_t {
 #define DEFINE_ST_ENUM_VAL_(_1, n) n,
@@ -394,7 +397,7 @@ inline bool isReducedFloatingType(ScalarType t) {
 
 inline bool isFloatingType(ScalarType t) {
   return t == ScalarType::Double || t == ScalarType::Float ||
-      isReducedFloatingType(t);
+      t == ScalarType::Float128 || isReducedFloatingType(t);
 }
 
 inline bool isComplexType(ScalarType t) {
@@ -493,6 +496,7 @@ inline bool isSignedType(ScalarType t) {
       CASE_ISSIGNED(Half);
       CASE_ISSIGNED(Float);
       CASE_ISSIGNED(Double);
+      CASE_ISSIGNED(Float128);
       CASE_ISSIGNED(ComplexHalf);
       CASE_ISSIGNED(ComplexFloat);
       CASE_ISSIGNED(ComplexDouble);

@@ -1671,6 +1671,7 @@ def gen_pyi(
             "float",
             "float64",
             "double",
+            "float128",
             "float16",
             "bfloat16",
             "float8_e4m3fn",
