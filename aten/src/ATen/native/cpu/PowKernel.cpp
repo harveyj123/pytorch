@@ -1,5 +1,6 @@
 #define TORCH_ASSERT_NO_OPERATORS
 #include <cmath>
+#include <quadmath.h>
 #include <ATen/Dispatch.h>
 #include <ATen/Parallel.h>
 #include <ATen/cpu/vec/vec.h>
@@ -7,8 +8,11 @@
 #include <ATen/native/Pow.h>
 #include <ATen/native/UnaryOps.h>
 #include <ATen/native/cpu/Loops.h>
-
 #include <c10/core/Scalar.h>
+
+#ifdef __SIZEOF_FLOAT128__
+#include <quadmath.h>
+#endif
 
 namespace at::native {
 
@@ -16,9 +20,18 @@ inline namespace CPU_CAPABILITY {
 
 static void pow_tensor_tensor_kernel(TensorIteratorBase& iter) {
   const auto dtype = iter.common_dtype();
+#ifdef __SIZEOF_FLOAT128__
+  if (dtype == ScalarType::Float128) {
+    using scalar_t = __float128;
+    cpu_kernel(iter,
+      [=](scalar_t base, scalar_t exp) -> scalar_t {
+        return powq(base, exp);
+      }
+    );
+  } else
+#endif // __SIZEOF_FLOAT128__
   if (isFloatingType(dtype) || isComplexType(dtype)) {
     AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kHalf, kBFloat16, dtype, "pow", [&]() {
-
       using Vec = Vectorized<scalar_t>;
       cpu_kernel_vec(iter,
         [=](scalar_t base, scalar_t exp) -> scalar_t {
@@ -93,7 +106,11 @@ static void pow_tensor_scalar_kernel(
   const auto dtype = iter.common_dtype();
 
   if (dtype == ScalarType::Float || dtype == ScalarType::Double ||
-      dtype == kBFloat16 || isComplexType(dtype)) {
+      dtype == kBFloat16
+#ifdef __SIZEOF_FLOAT128__
+      || dtype == kFloat128
+#endif // __SIZEOF_FLOAT128__
+      || isComplexType(dtype)) {
     // Dispatch to fast specialization for sqrt, rsqrt and reciprocal
     if (exp_scalar.equal(.5)) {
       return sqrt_kernel(iter);

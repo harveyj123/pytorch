@@ -5,7 +5,7 @@
 #include <c10/util/BFloat16.h>
 #include <c10/util/MathConstants.h>
 #include <c10/macros/Macros.h>
-
+#include <quadmath.h>
 #include <cmath>
 #include <limits>
 #include <optional>
@@ -116,6 +116,32 @@ struct uniform_real_distribution {
     T from_;
     T to_;
 };
+
+#ifdef __SIZEOF_FLOAT128__
+template <>
+struct uniform_real_distribution<__float128> {
+  C10_HOST_DEVICE inline uniform_real_distribution(__float128 from, __float128 to) : from_(from), to_(to) {
+    TORCH_CHECK_IF_NOT_ON_CUDA(from <= to);
+    TORCH_CHECK_IF_NOT_ON_CUDA(to - from <= std::numeric_limits<__float128>::max());
+  }
+
+  template <typename RNG>
+  C10_HOST_DEVICE inline __float128 operator()(RNG generator){
+
+    uint64_t hi = generator->random64();
+    uint64_t lo = generator->random64() >> 15; 
+    
+    __float128 mantissa = static_cast<__float128>(hi) * ldexpq(1.0Q, -64) + 
+                          static_cast<__float128>(lo) * ldexpq(1.0Q, -113);
+    
+    return from_ + mantissa * (to_ - from_);
+  }
+
+  private:
+    __float128 from_;
+    __float128 to_;
+};
+#endif // __SIZEOF_FLOAT128__
 
 // The SFINAE checks introduced in #39816 looks overcomplicated and must revisited
 // https://github.com/pytorch/pytorch/issues/40052

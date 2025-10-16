@@ -83,6 +83,7 @@ void gemm(
     float beta,
     at::BFloat16 *c, int64_t ldc);
 
+#ifdef __SIZEOF_FLOAT128__
 void gemm(
     TransposeType transa, TransposeType transb,
     int64_t m, int64_t n, int64_t k,
@@ -91,6 +92,7 @@ void gemm(
     const __float128 *b, int64_t ldb,
     __float128 beta,
     __float128 *c, int64_t ldc);
+#endif // __SIZEOF_FLOAT128__
 
 void gemm(
     TransposeType transa, TransposeType transb,
@@ -186,7 +188,9 @@ void axpy(int64_t n, double a, const double *x, int64_t incx, double *y, int64_t
 void axpy(int64_t n, float a, const float *x, int64_t incx, float *y, int64_t incy);
 void axpy(int64_t n, c10::complex<double> a, const c10::complex<double> *x, int64_t incx, c10::complex<double> *y, int64_t incy);
 void axpy(int64_t n, c10::complex<float> a, const c10::complex<float> *x, int64_t incx, c10::complex<float> *y, int64_t incy);
+#ifdef __SIZEOF_FLOAT128__
 void axpy(int64_t n, __float128 a, const __float128 *x, int64_t incx, __float128 *y, int64_t incy);
+#endif // __SIZEOF_FLOAT128__
 
 using copy_fn = void(*)(at::ScalarType type, int64_t n, const void *x, int64_t incx, void *y, int64_t incy);
 
@@ -208,7 +212,9 @@ void copy(int64_t n, const double *x, int64_t incx, double *y, int64_t incy);
 void copy(int64_t n, const float *x, int64_t incx, float *y, int64_t incy);
 void copy(int64_t n, const c10::complex<double> *x, int64_t incx, c10::complex<double> *y, int64_t incy);
 void copy(int64_t n, const c10::complex<float> *x, int64_t incx, c10::complex<float> *y, int64_t incy);
+#ifdef __SIZEOF_FLOAT128__
 void copy(int64_t n, const __float128 *x, int64_t incx, __float128 *y, int64_t incy);
+#endif // __SIZEOF_FLOAT128__
 
 // Batch-reduce GEMM
 // Operates by the following formula:

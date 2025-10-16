@@ -141,7 +141,9 @@ CUDA_ACC_TYPE(char, int64_t)
 CUDA_ACC_TYPE(int16_t, int64_t)
 CUDA_ACC_TYPE(int32_t, int64_t)
 CUDA_ACC_TYPE(int64_t, int64_t)
+#ifdef __SIZEOF_FLOAT128__
 CUDA_ACC_TYPE(__float128, __float128)
+#endif // __SIZEOF_FLOAT128__
 CUDA_ACC_TYPE(bool, bool)
 CUDA_ACC_TYPE(c10::complex<Half>, c10::complex<float>)
 CUDA_ACC_TYPE(c10::complex<float>, c10::complex<float>)
@@ -155,7 +157,9 @@ CPU_ACC_TYPE(Float8_e5m2fnuz, float)
 CPU_ACC_TYPE(Float8_e4m3fnuz, float)
 CPU_ACC_TYPE(float, double)
 CPU_ACC_TYPE(double, double)
+#ifdef __SIZEOF_FLOAT128__
 CPU_ACC_TYPE(__float128, __float128)
+#endif // __SIZEOF_FLOAT128__
 CPU_ACC_TYPE(int8_t, int64_t)
 CPU_ACC_TYPE(uint8_t, int64_t)
 CPU_ACC_TYPE(char, int64_t)
