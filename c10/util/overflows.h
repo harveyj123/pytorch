@@ -3,6 +3,7 @@
 #include <c10/macros/Macros.h>
 #include <c10/util/TypeSafeSignMath.h>
 #include <c10/util/complex.h>
+#include <c10/util/Float128.h>
 
 #include <cmath>
 #include <limits>
@@ -57,18 +58,36 @@ overflows(From f, bool strict_unsigned = false) {
   return c10::less_than_lowest<To>(f) || greater_than_max<To>(f);
 }
 
+// Template for floating point types including __float128
 template <typename To, typename From>
-std::enable_if_t<std::is_floating_point_v<From>, bool> overflows(
+std::enable_if_t<std::is_floating_point_v<From> || std::is_same_v<From, __float128>, bool> overflows(
     From f,
     bool strict_unsigned [[maybe_unused]] = false) {
   using limit = std::numeric_limits<typename scalar_value_type<To>::type>;
-  if (limit::has_infinity && std::isinf(static_cast<double>(f))) {
-    return false;
+  
+  // Handle __float128 using quadmath functions
+  if constexpr (std::is_same_v<From, __float128>) {
+    // __float128 has full IEEE 754 quadruple precision (113-bit mantissa)
+    // Check for infinity if the target type supports it
+    if (limit::has_infinity && isinfq(f)) {
+      return false;
+    }
+    // Check for NaN if the target type doesn't support it
+    if (!limit::has_quiet_NaN && isnanq(f)) {
+      return true;
+    }
+    // Check if the value is within the representable range
+    return f < static_cast<__float128>(limit::lowest()) || f > static_cast<__float128>(limit::max());
+  } else {
+    // Standard floating point types (float, double, etc.)
+    if (limit::has_infinity && std::isinf(static_cast<double>(f))) {
+      return false;
+    }
+    if (!limit::has_quiet_NaN && (f != f)) {
+      return true;
+    }
+    return f < limit::lowest() || f > limit::max();
   }
-  if (!limit::has_quiet_NaN && (f != f)) {
-    return true;
-  }
-  return f < limit::lowest() || f > limit::max();
 }
 
 C10_CLANG_DIAGNOSTIC_POP()

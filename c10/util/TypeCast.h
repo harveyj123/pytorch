@@ -202,9 +202,9 @@ C10_HOST_DEVICE To convert(From f) {
 
 template <typename To, typename From>
 To checked_convert(From f, const char* name) {
-  // ignore overflow for __float128 for now #TODO FIX
   // Converting to bool can't overflow so we exclude these cases from checking.
-  if (!std::is_same_v<To, bool> && !std::is_same_v<To, __float128> && overflows<To, From>(f)) {
+  // __float128 now supports full IEEE FP128 precision overflow checking.
+  if (!std::is_same_v<To, bool> && overflows<To, From>(f)) {
     report_overflow(name);
   }
   return convert<To, From>(f);
