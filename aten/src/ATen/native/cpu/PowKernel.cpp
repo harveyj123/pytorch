@@ -99,6 +99,41 @@ void pow_tensor_scalar_optimized_kernel(TensorIteratorBase& iter, const exp_scal
   }
 }
 
+// Specialized template for float128 to use quadmath functions for full precision
+#ifdef __SIZEOF_FLOAT128__
+template <>
+void pow_tensor_scalar_optimized_kernel<__float128, __float128, __float128>(
+    TensorIteratorBase& iter, const __float128 exp) {
+  // .5 (sqrt), -.5 (rsqrt) and -1 (reciprocal) specializations are handled
+  // in pow_tensor_scalar_kernel
+  if (exp == 2.0q) {
+    cpu_kernel(iter,
+        [](__float128 base) -> __float128 {
+          return base * base;
+        }
+    );
+  } else if (exp == 3.0q) {
+    cpu_kernel(iter,
+        [](__float128 base) -> __float128 {
+          return base * base * base;
+        }
+    );
+  } else if (exp == -2.0q) {
+    cpu_kernel(iter,
+        [](__float128 base) __ubsan_ignore_float_divide_by_zero__ -> __float128 {
+          return 1.0q / (base * base);
+        }
+    );
+  } else {
+    cpu_kernel(iter,
+        [=](__float128 base) -> __float128 {
+          return powq(base, exp);
+        }
+    );
+  }
+}
+#endif // __SIZEOF_FLOAT128__
+
 static void pow_tensor_scalar_kernel(
     TensorIteratorBase& iter,
     const Scalar& exp_scalar) {
@@ -120,6 +155,15 @@ static void pow_tensor_scalar_kernel(
       return reciprocal_kernel(iter);
     }
   }
+
+#ifdef __SIZEOF_FLOAT128__
+  if (dtype == ScalarType::Float128) {
+    using scalar_t = __float128;
+    const auto exp = exp_scalar.to<__float128>();
+    pow_tensor_scalar_optimized_kernel<scalar_t, scalar_t, scalar_t>(iter, exp);
+    return;
+  }
+#endif // __SIZEOF_FLOAT128__
 
   if (dtype == ScalarType::Float || dtype == ScalarType::Double) {
     AT_DISPATCH_FLOATING_TYPES(dtype, "pow", [&]() {
