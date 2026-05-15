@@ -369,6 +369,7 @@ class ScalarType(Enum):
     Half = auto()
     Float = auto()
     Double = auto()
+    Float128 = auto()
     ComplexHalf = auto()
     ComplexFloat = auto()
     ComplexDouble = auto()
@@ -419,7 +420,7 @@ DTYPE_CLASSES["Integral"] = OrderedSet(
     ]
 )
 # NB: Floating doesn't include low precision types
-DTYPE_CLASSES["Floating"] = OrderedSet([ScalarType.Float, ScalarType.Double])
+DTYPE_CLASSES["Floating"] = OrderedSet([ScalarType.Float, ScalarType.Double, ScalarType.Float128])
 DTYPE_CLASSES["Complex"] = OrderedSet(
     [ScalarType.ComplexFloat, ScalarType.ComplexDouble]
 )

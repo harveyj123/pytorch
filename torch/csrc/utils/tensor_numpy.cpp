@@ -280,6 +280,8 @@ int aten_to_numpy_dtype(const ScalarType scalar_type) {
       return NPY_FLOAT;
     case kHalf:
       return NPY_HALF;
+    case kFloat128:
+      return NPY_LONGDOUBLE;
     case kComplexDouble:
       return NPY_COMPLEX128;
     case kComplexFloat:
@@ -315,6 +317,8 @@ ScalarType numpy_dtype_to_aten(int dtype) {
       return kFloat;
     case NPY_HALF:
       return kHalf;
+    case NPY_LONGDOUBLE:
+      return kFloat128;
     case NPY_COMPLEX64:
       return kComplexFloat;
     case NPY_COMPLEX128:
@@ -357,7 +361,7 @@ ScalarType numpy_dtype_to_aten(int dtype) {
     throw python_error();
   throw TypeError(
       "can't convert np.ndarray of type %s. The only supported types are: "
-      "float64, float32, float16, complex64, complex128, int64, int32, int16, int8, uint64, uint32, uint16, uint8, and bool.",
+      "float64, float32, float16, longdouble, complex64, complex128, int64, int32, int16, int8, uint64, uint32, uint16, uint8, and bool.",
       ((PyTypeObject*)pytype.get())->tp_name);
 }
 

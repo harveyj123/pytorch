@@ -63,7 +63,8 @@ void fill_kernel(TensorIterator& iter, const Scalar& value_scalar) {
             [=]() -> scalar_t { return value; },
             [=]() { return Vectorized<scalar_t>(value); });
       }),
-      AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), kBool, AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES)
+      // # TODO: Need to seperate seperate Float128 here maybe if __FLOAT_128_SIZE__ here
+      AT_EXPAND(AT_ALL_TYPES_AND_COMPLEX), kBool, AT_EXPAND(AT_BAREBONES_UNSIGNED_TYPES), AT_EXPAND(AT_FLOAT128_TYPES)
     );
   }
 }

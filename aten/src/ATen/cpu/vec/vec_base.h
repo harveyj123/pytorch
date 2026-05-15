@@ -40,6 +40,7 @@
 #include <c10/util/TypeCast.h>
 #include <c10/util/copysign.h>
 #include <c10/util/irange.h>
+#include <c10/util/Float128.h>
 
 #if defined(__GNUC__)
 #define __FORCE_INLINE __attribute__((always_inline)) inline
@@ -99,7 +100,11 @@ struct is_floating_point
     : std::integral_constant<
           bool,
           std::is_floating_point_v<T> || std::is_same_v<T, at::Half> ||
-              std::is_same_v<T, at::BFloat16>> {};
+              std::is_same_v<T, at::BFloat16>
+#if defined(__FLT128_MAX__)
+              || std::is_same_v<T, __float128>
+#endif
+              > {};
 
 template <typename T>
 constexpr bool is_floating_point_v = is_floating_point<T>::value;
@@ -137,6 +142,12 @@ DEFINE_INT_OF_SIZE(int64_t);
 DEFINE_INT_OF_SIZE(int32_t);
 DEFINE_INT_OF_SIZE(int16_t);
 DEFINE_INT_OF_SIZE(int8_t);
+#if defined(__SIZEOF_INT128__)
+template <>
+struct int_of_size<16> {
+  using type = __int128;
+};
+#endif
 
 #undef DEFINE_INT_OF_SIZE
 

@@ -778,6 +778,7 @@ INSTANTIATE_DOT_IMPL(int8_t)
 INSTANTIATE_DOT_IMPL(int16_t)
 INSTANTIATE_DOT_IMPL(int)
 INSTANTIATE_DOT_IMPL(int64_t)
+INSTANTIATE_DOT_IMPL(__float128)
 
 #define INSTANTIATE_VDOT_IMPL(scalar_t)  \
   template scalar_t vdot_impl<scalar_t>( \

@@ -101,6 +101,9 @@ struct static_cast_with_inter_type<uint8_t, src_t> {
   }
 };
 
+
+
+
 template <>
 struct static_cast_with_inter_type<c10::complex<c10::Half>, c10::BFloat16> {
   C10_HOST_DEVICE __ubsan_ignore_undefined__ static inline c10::complex<
@@ -109,6 +112,7 @@ struct static_cast_with_inter_type<c10::complex<c10::Half>, c10::BFloat16> {
     return static_cast<c10::complex<c10::Half>>(c10::complex<float>{src});
   }
 };
+
 
 template <>
 struct static_cast_with_inter_type<c10::complex<c10::Half>, c10::Float8_e5m2> {
@@ -186,6 +190,8 @@ struct static_cast_with_inter_type<
   }
 };
 
+
+
 template <typename To, typename From>
 C10_HOST_DEVICE To convert(From f) {
   return static_cast_with_inter_type<To, From>::apply(f);
@@ -196,7 +202,8 @@ C10_HOST_DEVICE To convert(From f) {
 
 template <typename To, typename From>
 To checked_convert(From f, const char* name) {
-  // Converting to bool can't overflow so we exclude this case from checking.
+  // Converting to bool can't overflow so we exclude these cases from checking.
+  // __float128 now supports full IEEE FP128 precision overflow checking.
   if (!std::is_same_v<To, bool> && overflows<To, From>(f)) {
     report_overflow(name);
   }

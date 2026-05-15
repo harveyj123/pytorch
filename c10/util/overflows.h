@@ -3,6 +3,7 @@
 #include <c10/macros/Macros.h>
 #include <c10/util/TypeSafeSignMath.h>
 #include <c10/util/complex.h>
+#include <c10/util/Float128.h>
 
 #include <cmath>
 #include <limits>
@@ -57,18 +58,56 @@ overflows(From f, bool strict_unsigned = false) {
   return c10::less_than_lowest<To>(f) || greater_than_max<To>(f);
 }
 
+// Template for floating point types including __float128
 template <typename To, typename From>
-std::enable_if_t<std::is_floating_point_v<From>, bool> overflows(
+std::enable_if_t<std::is_floating_point_v<From> || std::is_same_v<From, __float128>, bool> overflows(
     From f,
     bool strict_unsigned [[maybe_unused]] = false) {
   using limit = std::numeric_limits<typename scalar_value_type<To>::type>;
-  if (limit::has_infinity && std::isinf(static_cast<double>(f))) {
-    return false;
+  
+  // Handle __float128 specially
+  if constexpr (std::is_same_v<From, __float128>) {
+    // For CUDA compilation, use bit-pattern checks instead of quadmath functions
+    // which are not available in NVCC
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    // Check for infinity by examining bit pattern
+    // Infinity has exponent all 1s and mantissa all 0s
+    union { __float128 f; struct { uint64_t lo; uint64_t hi; } u; } conv;
+    conv.f = f;
+    uint64_t exp_mask = 0x7FFF000000000000ULL;
+    uint64_t mant_hi_mask = 0x0000FFFFFFFFFFFFULL;
+    bool is_inf = ((conv.u.hi & exp_mask) == exp_mask) && 
+                  ((conv.u.hi & mant_hi_mask) == 0) && (conv.u.lo == 0);
+    bool is_nan = ((conv.u.hi & exp_mask) == exp_mask) && 
+                  (((conv.u.hi & mant_hi_mask) != 0) || (conv.u.lo != 0));
+    
+    if (limit::has_infinity && is_inf) {
+      return false;
+    }
+    if (!limit::has_quiet_NaN && is_nan) {
+      return true;
+    }
+#else
+    // Host-only code can use quadmath functions
+    if (limit::has_infinity && isinfq(f)) {
+      return false;
+    }
+    if (!limit::has_quiet_NaN && isnanq(f)) {
+      return true;
+    }
+#endif
+    // Check if the value is within the representable range
+    return f < static_cast<__float128>(limit::lowest()) || f > static_cast<__float128>(limit::max());
+  } else {
+    // Standard floating point types (float, double, etc.)
+    if (limit::has_infinity && std::isinf(static_cast<double>(f))) {
+      return false;
+    }
+    if (!limit::has_quiet_NaN && (f != f)) {
+      return true;
+    }
+    return f < limit::lowest() || f > limit::max();
   }
-  if (!limit::has_quiet_NaN && (f != f)) {
-    return true;
-  }
-  return f < limit::lowest() || f > limit::max();
 }
 
 C10_CLANG_DIAGNOSTIC_POP()

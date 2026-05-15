@@ -549,6 +549,23 @@ void gemm(
       transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
+#ifdef __SIZEOF_FLOAT128__
+void gemm(
+    TransposeType transa, TransposeType transb,
+    int64_t m, int64_t n, int64_t k,
+    const __float128 alpha,
+    const __float128 *a, int64_t lda,
+    const __float128 *b, int64_t ldb,
+    const __float128 beta,
+    __float128 *c, int64_t ldc) {
+  internal::normalize_last_dims(transa, transb, m, n, k, &lda, &ldb, &ldc);
+  // No BLAS library supports __float128, so always use fallback
+  gemm_stub(
+      at::kCPU, at::kFloat128,
+      transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+}
+#endif // __SIZEOF_FLOAT128__
+
 template <typename scalar_t>
 static void gemm_batched_mkl_impl(
       TransposeType transa, TransposeType transb,
@@ -794,6 +811,19 @@ void axpy(int64_t n, c10::complex<float> a, const c10::complex<float> *x, int64_
       n, a, x, incx, y, incy);
 }
 
+#ifdef __SIZEOF_FLOAT128__
+void axpy(int64_t n, __float128 a, const __float128 *x, int64_t incx, __float128 *y, int64_t incy) {
+  if(n == 1)
+  {
+    incx = 1;
+    incy = 1;
+  }
+  axpy_stub(
+      kCPU, at::kFloat128,
+      n, a, x, incx, y, incy);
+}
+#endif // __SIZEOF_FLOAT128__
+
 DEFINE_DISPATCH(copy_stub);
 
 void copy(int64_t n, const double *x, int64_t incx, double *y, int64_t incy) {
@@ -891,6 +921,19 @@ void copy(int64_t n, const c10::complex<float> *x, int64_t incx, c10::complex<fl
       kCPU, at::kComplexFloat,
       n, x, incx, y, incy);
 }
+
+#ifdef __SIZEOF_FLOAT128__
+void copy(int64_t n, const __float128 *x, int64_t incx, __float128 *y, int64_t incy) {
+  if(n == 1)
+  {
+    incx = 1;
+    incy = 1;
+  }
+  copy_stub(
+      kCPU, at::kFloat128,
+      n, x, incx, y, incy);
+}
+#endif // __SIZEOF_FLOAT128__
 
 // oneDNN BRGEMM
 #if defined(ONEDNN_UKERNEL_ENABLED)

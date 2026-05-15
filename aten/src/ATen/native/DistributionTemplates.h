@@ -289,19 +289,35 @@ at::Tensor& uniform_impl_(at::Tensor& self, double from, double to, std::optiona
     auto float_tensor = at::view_as_real(self);
     uniform_impl_<uniform_kernel, RNG>(float_tensor, from, to, generator);
   } else {
+#ifdef __SIZEOF_FLOAT128__
+    AT_DISPATCH_FLOATING_TYPES_AND3(at::ScalarType::Half, at::ScalarType::BFloat16, at::ScalarType::Float128, self.scalar_type(), "check_uniform_bounds", [&] {
+      [[maybe_unused]] const auto dtype = self.dtype();
+      const auto min = static_cast<scalar_t>(std::numeric_limits<scalar_t>::lowest());
+      const auto max = static_cast<scalar_t>(std::numeric_limits<scalar_t>::max());
+      if (dtype == at::kFloat128) {
+          CHECK_OUT_OF_BOUNDS(static_cast<__float128>(from), "from", min, max, dtype);
+          CHECK_OUT_OF_BOUNDS(static_cast<__float128>(to), "to", min, max, dtype);
+      } else {
+        CHECK_OUT_OF_BOUNDS(from, "from", min, max, dtype);
+        CHECK_OUT_OF_BOUNDS(to, "to", min, max, dtype);
+      }
+#else
     AT_DISPATCH_FLOATING_TYPES_AND2(at::ScalarType::Half, at::ScalarType::BFloat16, self.scalar_type(), "check_uniform_bounds", [&] {
       [[maybe_unused]] const auto dtype = self.dtype();
-      const auto min = static_cast<double>(std::numeric_limits<scalar_t>::lowest());
-      const auto max = static_cast<double>(std::numeric_limits<scalar_t>::max());
+      const auto min = static_cast<scalar_t>(std::numeric_limits<scalar_t>::lowest());
+      const auto max = static_cast<scalar_t>(std::numeric_limits<scalar_t>::max());
       CHECK_OUT_OF_BOUNDS(from, "from", min, max, dtype);
       CHECK_OUT_OF_BOUNDS(to, "to", min, max, dtype);
+#endif // __SIZEOF_FLOAT128__
       TORCH_CHECK(from <= to, "uniform_ expects to return a [from, to) range, but found from=", from, " > to=", to);
       TORCH_CHECK((to - from) <= std::numeric_limits<scalar_t>::max(),
             "uniform_ expects to-from <= std::numeric_limits<", toString(self.scalar_type()),
             ">::max(), but found to=", to, " and from=", from,
             " which result in to-from to exceed the limit");
-      from = std::min(std::max(from, min), max);
-      to = std::max(std::min(to, max), min);
+      // from = std::min(std::max(from, min), max);
+      // to = std::max(std::min(to, max), min);
+      scalar_t from = std::min(std::max(static_cast<scalar_t>(from), min), max);
+      scalar_t to = std::max(std::min(static_cast<scalar_t>(to), max), min);
     });
     CHECK_EMPTY_AND_RETURN(self);
     auto iter = at::TensorIterator::borrowing_nullary_op(self);

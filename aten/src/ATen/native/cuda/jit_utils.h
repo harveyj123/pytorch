@@ -232,6 +232,12 @@ template <> inline std::string typeName<at::Float8_e8m0fnu>() {
     // TODO(#146647): Can the code here be made generic for any scalartype?
     return "at::Float8_e8m0fnu";
 }
+#ifdef __SIZEOF_FLOAT128__
+template <> inline std::string typeName<__float128>() {
+    return "__float128";
+}
+#endif // __SIZEOF_FLOAT128__
+
 
 #define TYPE_NAME_CASE(ctype, scalartype)                    \
   case ScalarType::scalartype:  return typeName<ctype>();

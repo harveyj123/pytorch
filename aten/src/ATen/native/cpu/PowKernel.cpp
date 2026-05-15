@@ -1,5 +1,6 @@
 #define TORCH_ASSERT_NO_OPERATORS
 #include <cmath>
+#include <quadmath.h>
 #include <ATen/Dispatch.h>
 #include <ATen/Parallel.h>
 #include <ATen/cpu/vec/vec.h>
@@ -7,8 +8,11 @@
 #include <ATen/native/Pow.h>
 #include <ATen/native/UnaryOps.h>
 #include <ATen/native/cpu/Loops.h>
-
 #include <c10/core/Scalar.h>
+
+#ifdef __SIZEOF_FLOAT128__
+#include <quadmath.h>
+#endif
 
 namespace at::native {
 
@@ -16,9 +20,18 @@ inline namespace CPU_CAPABILITY {
 
 static void pow_tensor_tensor_kernel(TensorIteratorBase& iter) {
   const auto dtype = iter.common_dtype();
+#ifdef __SIZEOF_FLOAT128__
+  if (dtype == ScalarType::Float128) {
+    using scalar_t = __float128;
+    cpu_kernel(iter,
+      [=](scalar_t base, scalar_t exp) -> scalar_t {
+        return powq(base, exp);
+      }
+    );
+  } else
+#endif // __SIZEOF_FLOAT128__
   if (isFloatingType(dtype) || isComplexType(dtype)) {
     AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND2(kHalf, kBFloat16, dtype, "pow", [&]() {
-
       using Vec = Vectorized<scalar_t>;
       cpu_kernel_vec(iter,
         [=](scalar_t base, scalar_t exp) -> scalar_t {
@@ -86,6 +99,41 @@ void pow_tensor_scalar_optimized_kernel(TensorIteratorBase& iter, const exp_scal
   }
 }
 
+// Specialized template for float128 to use quadmath functions for full precision
+#ifdef __SIZEOF_FLOAT128__
+template <>
+void pow_tensor_scalar_optimized_kernel<__float128, __float128, __float128>(
+    TensorIteratorBase& iter, const __float128 exp) {
+  // .5 (sqrt), -.5 (rsqrt) and -1 (reciprocal) specializations are handled
+  // in pow_tensor_scalar_kernel
+  if (exp == 2.0q) {
+    cpu_kernel(iter,
+        [](__float128 base) -> __float128 {
+          return base * base;
+        }
+    );
+  } else if (exp == 3.0q) {
+    cpu_kernel(iter,
+        [](__float128 base) -> __float128 {
+          return base * base * base;
+        }
+    );
+  } else if (exp == -2.0q) {
+    cpu_kernel(iter,
+        [](__float128 base) __ubsan_ignore_float_divide_by_zero__ -> __float128 {
+          return 1.0q / (base * base);
+        }
+    );
+  } else {
+    cpu_kernel(iter,
+        [=](__float128 base) -> __float128 {
+          return powq(base, exp);
+        }
+    );
+  }
+}
+#endif // __SIZEOF_FLOAT128__
+
 static void pow_tensor_scalar_kernel(
     TensorIteratorBase& iter,
     const Scalar& exp_scalar) {
@@ -93,7 +141,11 @@ static void pow_tensor_scalar_kernel(
   const auto dtype = iter.common_dtype();
 
   if (dtype == ScalarType::Float || dtype == ScalarType::Double ||
-      dtype == kBFloat16 || isComplexType(dtype)) {
+      dtype == kBFloat16
+#ifdef __SIZEOF_FLOAT128__
+      || dtype == kFloat128
+#endif // __SIZEOF_FLOAT128__
+      || isComplexType(dtype)) {
     // Dispatch to fast specialization for sqrt, rsqrt and reciprocal
     if (exp_scalar.equal(.5)) {
       return sqrt_kernel(iter);
@@ -103,6 +155,15 @@ static void pow_tensor_scalar_kernel(
       return reciprocal_kernel(iter);
     }
   }
+
+#ifdef __SIZEOF_FLOAT128__
+  if (dtype == ScalarType::Float128) {
+    using scalar_t = __float128;
+    const auto exp = exp_scalar.to<__float128>();
+    pow_tensor_scalar_optimized_kernel<scalar_t, scalar_t, scalar_t>(iter, exp);
+    return;
+  }
+#endif // __SIZEOF_FLOAT128__
 
   if (dtype == ScalarType::Float || dtype == ScalarType::Double) {
     AT_DISPATCH_FLOATING_TYPES(dtype, "pow", [&]() {

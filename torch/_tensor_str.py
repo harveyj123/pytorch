@@ -129,6 +129,7 @@ def tensor_totype(t):
 
 class _Formatter:
     def __init__(self, tensor):
+        self.tensor_dtype = tensor.dtype # Store dtype
         self.floating_dtype = tensor.dtype.is_floating_point
         self.int_mode = True
         self.sci_mode = False
@@ -136,6 +137,22 @@ class _Formatter:
 
         with torch.no_grad():
             tensor_view = tensor.reshape(-1)
+
+        if self.tensor_dtype == torch.float128:
+            # For float128, assume elements from tolist() will be strings
+            # directly use them for max_width calculation.
+            # This bypasses the conversion to double via tensor_totype.
+            self.sci_mode = False # Or determine based on actual string values if needed
+            self.int_mode = False
+            str_values = tensor_view.tolist() # Assuming this gives list of strings for float128
+            print(str_values)
+            for value_str in str_values:
+                self.max_width = max(self.max_width, len(value_str))
+            # Set PRINT_OPTS.sci_mode if explicitly requested
+            if PRINT_OPTS.sci_mode is not None:
+                # This part might need more sophisticated handling for float128 if sci_mode is forced
+                self.sci_mode = PRINT_OPTS.sci_mode
+            return # Skip the rest of the float processing for float128
 
         if not self.floating_dtype:
             for value in tensor_view:

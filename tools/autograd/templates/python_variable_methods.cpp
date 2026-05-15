@@ -2,6 +2,8 @@
 // ${generated_comment}
 
 #include <Python.h>
+#include <iostream>
+#include <quadmath.h>
 
 // Undefine the copysign macro so that at::copysign works as intended with MSVC
 // https://github.com/python/cpython/blob/c60394c7fc9cc09b16e9675a3eeb5844b6d8523f/PC/pyconfig.h#L196
@@ -883,8 +885,12 @@ static PyObject * THPVariable_item(PyObject* self, PyObject* args)
   if (check_has_torch_function(self)) {
     return handle_torch_function(self, "item", args);
   }
-  jit::tracer::warn("Converting a tensor to a Python number", jit::tracer::WARN_PYTHON_DATAFLOW);
+  jit::tracer::warn("Converting a tensor to a Python number", jit::tracer::WARN_PYTHON_DATAFLOW);  
+
   auto& self_ = THPVariable_Unpack(self);
+  
+  std::cout << "DEBUG: Scalar type: " << self_.scalar_type() << std::endl;
+
   auto dispatch_item_ = [](const Tensor& self) -> at::Scalar {
     pybind11::gil_scoped_release no_gil;
     return self.item();
