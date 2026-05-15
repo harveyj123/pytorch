@@ -1028,6 +1028,7 @@ def configure_extension_build():
             # http://legacy.python.org/dev/peps/pep-3123/
             # We also depend on it in our code (even Python 3).
             "-fno-strict-aliasing",
+            "-fext-numeric-literals",
         ]
 
     library_dirs.append(lib_path)
